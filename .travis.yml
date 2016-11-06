@@ -1,0 +1,15 @@
+language: go
+
+go:
+  - 1.7
+
+before_install:
+  - go get github.com/0xef53/go-qmp
+  - go get github.com/0xef53/liner
+
+install:
+  - go get -v -tags netgo -ldflags '-s -w' ./...
+
+notifications:
+  email:
+    - sergey@divpro.ru
