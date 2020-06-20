@@ -13,10 +13,11 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 	"unicode"
 	"unsafe"
 
-	"github.com/0xef53/go-qmp"
+	"github.com/0xef53/go-qmp/v2"
 	"github.com/0xef53/liner"
 )
 
@@ -26,10 +27,10 @@ var (
 	ErrBadCommandFormat = errors.New("command format: <command-name>  [arg-name1=arg1] ... [arg-nameN=argN]")
 )
 
-type QMPCommand qmp.QMPCommand
+type QMPCommand qmp.Command
 
 type QMPShell struct {
-	qmpConn *qmp.QMPConn
+	monitor *qmp.Monitor
 	line    *liner.State
 	vmname  string
 	prompt  string
@@ -39,7 +40,7 @@ type QMPShell struct {
 }
 
 func NewQMPShell(socket string) (*QMPShell, error) {
-	qmpConn, err := qmp.Dial(socket)
+	monitor, err := qmp.NewMonitor(socket, 60*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to the socket: %s", socket)
 	}
@@ -49,7 +50,7 @@ func NewQMPShell(socket string) (*QMPShell, error) {
 		Name string `json:"name"`
 	}{}
 
-	if err := qmpConn.Command(QMPCommand{"query-name", nil}, &vm); err != nil {
+	if err := monitor.Run(QMPCommand{"query-name", nil}, &vm); err != nil {
 		return nil, err
 	}
 
@@ -62,7 +63,7 @@ func NewQMPShell(socket string) (*QMPShell, error) {
 		} `json:"qemu"`
 	}{}
 
-	if err := qmpConn.Command(QMPCommand{"query-version", nil}, &version); err != nil {
+	if err := monitor.Run(QMPCommand{"query-version", nil}, &version); err != nil {
 		return nil, err
 	}
 
@@ -71,7 +72,7 @@ func NewQMPShell(socket string) (*QMPShell, error) {
 		Name string `json:"name"`
 	}{}
 
-	if err := qmpConn.Command(QMPCommand{"query-commands", nil}, &qmpCommands); err != nil {
+	if err := monitor.Run(QMPCommand{"query-commands", nil}, &qmpCommands); err != nil {
 		return nil, fmt.Errorf("cannot build the QMP command list: %s", err)
 	}
 
@@ -100,7 +101,7 @@ func NewQMPShell(socket string) (*QMPShell, error) {
 
 	// Building the shell
 	shell := QMPShell{
-		qmpConn: qmpConn,
+		monitor: monitor,
 		line:    line,
 		vmname:  vm.Name,
 		prompt:  fmt.Sprintf("qmp_shell/%s> ", vm.Name),
@@ -112,7 +113,7 @@ func NewQMPShell(socket string) (*QMPShell, error) {
 }
 
 func (s *QMPShell) Close() {
-	defer s.qmpConn.Close()
+	defer s.monitor.Close()
 	defer s.line.Close()
 }
 
@@ -145,19 +146,23 @@ func (s *QMPShell) Serve() error {
 	fmt.Println("Connected to QEMU", s.qemuVer)
 	fmt.Println()
 
+	var ts uint64
+
 	for {
 		cmdline, err := s.line.Prompt(s.prompt)
 		switch err {
 		case nil:
 			if len(cmdline) == 0 {
-				if events, err := s.qmpConn.GetEvents(); err == nil {
+				if events, found := s.monitor.FindEvents("", ts); found {
 					for _, e := range events {
 						fmt.Printf(
-							"Received QMP Event: %s, Timestamp: seconds = %d, microseconds = %d\n",
-							e.Event,
+							"Received QMP Event %s: %v, Timestamp: seconds = %d, microseconds = %d\n",
+							e.Type,
+							e.Data,
 							e.Timestamp.Seconds,
 							e.Timestamp.Microseconds,
 						)
+						ts = e.Timestamp.Seconds + 1
 					}
 				}
 				continue
@@ -196,11 +201,11 @@ func (s *QMPShell) executeCommand(cmdline string) (string, error) {
 
 	var res interface{}
 
-	if err := s.qmpConn.Command(cmd, &res); err != nil {
+	if err := s.monitor.Run(cmd, &res); err != nil {
 		return "", err
 	}
 
-	if cmd.Execute == "human-monitor-command" {
+	if cmd.Name == "human-monitor-command" {
 		return fmt.Sprintf("%s", res), nil
 	}
 
