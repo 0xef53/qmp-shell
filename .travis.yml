@@ -13,3 +13,5 @@ install:
 notifications:
   email:
     - sergey@divpro.ru
+
+# Added comment - 
