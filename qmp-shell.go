@@ -12,13 +12,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 	"unicode"
-	"unsafe"
 
 	"github.com/0xef53/go-qmp/v2"
 	"github.com/0xef53/liner"
+    "github.com/robertkrimen/isatty"
 )
 
 var (
@@ -372,21 +371,6 @@ type Shell interface {
 	Close()
 }
 
-func isatty() bool {
-	var termios syscall.Termios
-
-	_, _, err := syscall.Syscall6(
-		syscall.SYS_IOCTL,
-		os.Stdin.Fd(),
-		uintptr(syscall.TCGETS),
-		uintptr(unsafe.Pointer(&termios)),
-		0,
-		0,
-		0,
-	)
-	return err == 0
-}
-
 func init() {
 	flag.Usage = printUsage
 }
@@ -419,7 +403,7 @@ func main() {
 	}
 	defer shell.Close()
 
-	if !isatty() {
+	if !isatty.Check(os.Stdin.Fd()) {
 		r := bufio.NewReader(os.Stdin)
 		cmdline, err := r.ReadString('\n')
 		if err != nil {

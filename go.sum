@@ -3,3 +3,5 @@ github.com/0xef53/go-qmp/v2 v2.0.1 h1:gICtJ0eplbHfxafQix3pqFLM8t3Db29GhhtyYoNhjN
 github.com/0xef53/go-qmp/v2 v2.0.1/go.mod h1:kqJLp1jcRUdsFE9WPBhPGy6r+/NOT4O7MyPImF9wD8A=
 github.com/0xef53/liner v0.0.0-20160615113019-8975875355a8 h1:+Q0uzJh6lFIdOfzdRrW65KWpqL6YExJr1A0WHjFhOQs=
 github.com/0xef53/liner v0.0.0-20160615113019-8975875355a8/go.mod h1:+J9ttMBwY2NxF2l5nqTkvlVltdCa3iVIZuWRi9vY1dU=
+github.com/robertkrimen/isatty v0.0.0-20130325233602-e10c441e3f8c h1:vohwaDqkxaWd67Faev9nHq2G4q2jHmFdpb4Y8m/SGQY=
+github.com/robertkrimen/isatty v0.0.0-20130325233602-e10c441e3f8c/go.mod h1:YkNdk/V1G+bh9l1esg4xXX5WkmWM0T5dQqvYjqpIuw0=
